@@ -8,6 +8,7 @@ import curses
 import subprocess
 import locale
 from dataclasses import dataclass
+from typing import Optional
 
 LOG_ENABLE = False
 
@@ -57,6 +58,7 @@ class GitLib:
             parse_row, filter(None, stdout.decode('utf-8').split('\n'))))
 
     def checkout(self, branch_name: str):
+        # FIXME: Sloppy code.
         branch_name = branch_name.replace('origin/', '')
         subprocess.check_call(['git', 'checkout', branch_name])
 
@@ -122,7 +124,7 @@ class GitChangeBranchUI:
         self.gitlib.checkout(branch_name)
         return branch
 
-    def serve(self) -> GitBranch:
+    def serve(self) -> Optional[GitBranch]:
         while True:
             self.render()
             self.stdscr.refresh()
@@ -137,7 +139,7 @@ class GitChangeBranchUI:
                 # Enter
                 return self.enter()
             elif c == ord('q'):
-                break  # Exit the while
+                return  # Exit the while
 
 
 def start_ui(stdscr):
@@ -147,7 +149,8 @@ def start_ui(stdscr):
 
 def main():
     git_branch = curses.wrapper(start_ui)
-    print(git_branch.refname)
+    if git_branch:
+        print(git_branch.refname)
 
 
 if __name__ == '__main__':

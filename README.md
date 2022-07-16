@@ -5,7 +5,10 @@
 ```bash
 pip install git-branch-selector
 ```
-
+or
+```bash
+python3 -m pip install git-branch-selector
+```
 
 ## Usage
 

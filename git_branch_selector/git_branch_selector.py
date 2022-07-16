@@ -148,9 +148,12 @@ def start_ui(stdscr):
 
 
 def main():
-    git_branch = curses.wrapper(start_ui)
-    if git_branch:
-        print(git_branch.refname)
+    try:
+        git_branch = curses.wrapper(start_ui)
+        if git_branch:
+            print(git_branch.refname)
+    except subprocess.CalledProcessError:
+        print('Not a git repository?')
 
 
 if __name__ == '__main__':

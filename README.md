@@ -1,5 +1,7 @@
 # git-branch-selector
 
+![screenshot](./media/screenshot.png)
+
 ## Install
 
 ```bash

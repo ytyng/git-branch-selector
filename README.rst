@@ -1,6 +1,10 @@
 git-branch-selector
 ~~~~~~~~~~~~~~~~~~~
 
+.. image:: https://img.shields.io/pypi/v/git-branch-selector.svg
+    :target: https://pypi.python.org/pypi/git-branch-selector/
+    :alt: Latest PyPI version
+
 .. image:: ./media/screenshot.png
 
 Install

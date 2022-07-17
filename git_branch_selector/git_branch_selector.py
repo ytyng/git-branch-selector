@@ -11,6 +11,19 @@ from dataclasses import dataclass
 from typing import Optional
 
 LOG_ENABLE = False
+# LOG_ENABLE = True
+
+
+class NotAGitRepository(Exception):
+    pass
+
+
+class InvokeAndRestart(Exception):
+    pass
+
+
+class InvokeGitFetch(InvokeAndRestart):
+    pass
 
 
 class Debugger:
@@ -46,9 +59,13 @@ class GitBranch:
 class GitLib:
 
     def get_branches(self) -> list[GitBranch]:
-        stdout = subprocess.check_output(
-            ['git', 'branch', '-a',
-             '--format=%(refname:short)\t%(authordate:relative)\t%(subject)'])
+        try:
+            stdout = subprocess.check_output(
+                ['git', 'branch', '-a',
+                 '--format=%(refname:short)\t%(authordate:relative)'
+                 '\t%(subject)'])
+        except subprocess.CalledProcessError:
+            raise NotAGitRepository()
 
         def parse_row(row: str):
             row = row.split('\t')
@@ -62,12 +79,19 @@ class GitLib:
         branch_name = branch_name.replace('origin/', '')
         subprocess.check_call(['git', 'checkout', branch_name])
 
+    def fetch(self):
+        subprocess.check_call(['git', 'fetch'])
+
 
 class GitChangeBranchUI:
     COLOR_ACTIVE = 1
     # COLOR_HEADER = 2
-    REFNAME_WIDTH = 24
-    AUTHORDATA_WIDTH = 16
+    COLOR_FOOTER = 2
+    REFNAME_WIDTH = 30
+    AUTHORDATA_WIDTH = 14
+
+    HELP_TEXT = '[q]Quit, [Arrow][j][k]Change branch, ' \
+                '[f]Fetch, [Enter]Checkout'
 
     def __init__(self, stdscr):
         self.stdscr = stdscr
@@ -76,8 +100,15 @@ class GitChangeBranchUI:
         stdscr.refresh()
         self.max_rows, self.max_cols = stdscr.getmaxyx()
         self.debugger = Debugger(stdscr)
+        self.gitlib = None
+        self.git_branches = []
+        self.position = 0
+        self.reload()
+
+    def reload(self):
         self.gitlib = GitLib()
-        self.git_branches = self.gitlib.get_branches()
+        # Omit if overflow
+        self.git_branches = self.gitlib.get_branches()[:self.max_rows - 1]
         self.position = 0
 
     def initialize_colors(self):
@@ -86,6 +117,8 @@ class GitChangeBranchUI:
                          curses.COLOR_YELLOW)
         # curses.init_pair(self.COLOR_HEADER, curses.COLOR_BLACK,
         #                  curses.COLOR_CYAN)
+        curses.init_pair(self.COLOR_FOOTER, curses.COLOR_BLACK,
+                         curses.COLOR_CYAN)
 
     def format_git_branch(self, git_branch: GitBranch) -> str:
         subject_width = self.max_cols - sum([2, self.REFNAME_WIDTH, 1, 16, 1])
@@ -105,7 +138,17 @@ class GitChangeBranchUI:
             else:
                 self.stdscr.addstr(
                     i, 0, f'  {self.format_git_branch(git_branch)}')
+        self.print_footer(self.HELP_TEXT)
         self.stdscr.addstr(self.position, 0, '')
+
+    def print_footer(self, message, refresh=False):
+        _w = self.max_cols - 1
+        self.stdscr.addstr(
+            self.max_rows - 1, 0,
+            message[:_w].ljust(_w),
+            curses.color_pair(self.COLOR_FOOTER))
+        if refresh:
+            self.stdscr.refresh()
 
     def up(self):
         self.debugger.log('up')
@@ -138,8 +181,12 @@ class GitChangeBranchUI:
             elif c == 10:
                 # Enter
                 return self.enter()
-            elif c == ord('q'):
+            elif c == ord('f'):
+                raise InvokeGitFetch()
+            elif c == ord('q') or c == 27:
+                # q or ESC
                 return  # Exit the while
+            self.debugger.log(f'c: {c}')
 
 
 def start_ui(stdscr):
@@ -148,12 +195,20 @@ def start_ui(stdscr):
 
 
 def main():
-    try:
-        git_branch = curses.wrapper(start_ui)
-        if git_branch:
-            print(git_branch.refname)
-    except subprocess.CalledProcessError:
-        print('Not a git repository?')
+    while True:
+        try:
+            git_branch = curses.wrapper(start_ui)
+            if git_branch:
+                print(git_branch.refname)
+        except InvokeGitFetch:
+            print('Fetching...')
+            gitlib = GitLib()
+            gitlib.fetch()
+        except NotAGitRepository:
+            print('Not a git repository?')
+            break
+        else:
+            break
 
 
 if __name__ == '__main__':

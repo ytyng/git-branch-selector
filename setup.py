@@ -4,9 +4,8 @@ from setuptools import setup
 
 setup(
     name='git-branch-selector',
-    version='0.1.2',
+    version='0.1.3',
     description='Select a git branch using arrow keys.',
-    long_description_content_type="text/markdown",
     license='BSD',
     author='ytyng',
     author_email='ytyng@live.jp',
